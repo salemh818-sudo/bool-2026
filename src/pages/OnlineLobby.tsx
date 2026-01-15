@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, Users, LogOut, Copy, Check, ArrowRight, Loader2, UserPlus, Bot } from 'lucide-react';
+import { Plus, Search, Users, LogOut, Copy, Check, ArrowRight, Loader2, UserPlus, Bot, DoorOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -239,71 +239,86 @@ const OnlineLobby = () => {
           اللعب أونلاين
         </motion.h1>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Create/Join Room */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Create Room Card */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-6"
           >
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
-              <Users className="w-5 h-5 text-neon" />
-              غرف اللعب
+              <Plus className="w-5 h-5 text-neon" />
+              إنشاء غرفة
             </h2>
 
-            {/* Create Room */}
-            <div className="mb-6">
-              <Button
-                onClick={handleCreateRoom}
-                className="w-full h-12 text-lg bg-neon hover:bg-neon/80 text-background gap-2"
+            <p className="text-muted-foreground text-sm mb-6">
+              أنشئ غرفة جديدة وشارك الكود مع أصدقائك
+            </p>
+
+            <Button
+              onClick={handleCreateRoom}
+              className="w-full h-12 text-lg bg-neon hover:bg-neon/80 text-background gap-2"
+            >
+              <Plus className="w-5 h-5" />
+              إنشاء غرفة جديدة
+            </Button>
+
+            {createdRoomCode && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-4 bg-neon/10 border border-neon/30 rounded-xl"
               >
-                <Plus className="w-5 h-5" />
-                إنشاء غرفة جديدة
+                <p className="text-sm text-muted-foreground mb-2">كود الغرفة:</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-2xl font-mono text-neon text-center">
+                    {createdRoomCode}
+                  </code>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={handleCopyCode}
+                    className="text-neon"
+                  >
+                    {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </motion.div>
+
+          {/* Join Room Card */}
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-6"
+          >
+            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+              <DoorOpen className="w-5 h-5 text-gold" />
+              انضم لغرفة
+            </h2>
+
+            <p className="text-muted-foreground text-sm mb-6">
+              أدخل كود الغرفة للانضمام لصديقك
+            </p>
+
+            <div className="space-y-3">
+              <Input
+                placeholder="أدخل كود الغرفة"
+                value={roomCode}
+                onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                className="w-full bg-background/50 border-border text-center font-mono text-lg"
+                maxLength={6}
+              />
+              <Button
+                onClick={handleJoinRoom}
+                disabled={!roomCode.trim()}
+                className="w-full h-12 text-lg bg-gold hover:bg-gold/80 text-background gap-2"
+              >
+                <DoorOpen className="w-5 h-5" />
+                انضم للغرفة
               </Button>
-
-              {createdRoomCode && (
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="mt-4 p-4 bg-neon/10 border border-neon/30 rounded-xl"
-                >
-                  <p className="text-sm text-muted-foreground mb-2">كود الغرفة:</p>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-2xl font-mono text-neon text-center">
-                      {createdRoomCode}
-                    </code>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={handleCopyCode}
-                      className="text-neon"
-                    >
-                      {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-            </div>
-
-            {/* Join Room */}
-            <div>
-              <p className="text-muted-foreground mb-2">أو انضم لغرفة:</p>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="أدخل كود الغرفة"
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  className="flex-1 bg-background/50 border-border text-center font-mono text-lg"
-                  maxLength={6}
-                />
-                <Button
-                  onClick={handleJoinRoom}
-                  disabled={!roomCode.trim()}
-                  className="bg-gold hover:bg-gold/80 text-background"
-                >
-                  انضم
-                </Button>
-              </div>
             </div>
           </motion.div>
 
@@ -312,7 +327,7 @@ const OnlineLobby = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-6 md:col-span-2 lg:col-span-1"
+            className="bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-6"
           >
             <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
               <Bot className="w-5 h-5 text-purple-400" />
