@@ -103,7 +103,7 @@ const StartScreen = () => {
         >
           <Button
             onClick={() => navigate('/offline-setup')}
-            className="group relative w-64 h-32 text-2xl font-bold bg-gradient-to-br from-gold/20 to-gold/5 border-2 border-gold/50 hover:border-gold text-gold hover:bg-gold/20 transition-all duration-300 rounded-2xl overflow-hidden"
+            className="group relative w-64 h-32 text-2xl font-bold bg-gradient-to-br from-gold/20 to-gold/5 border-2 border-gold/50 hover:border-gold text-white hover:bg-gold/20 transition-all duration-300 rounded-2xl overflow-hidden"
           >
             <div className="absolute inset-0 bg-gradient-to-t from-gold/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
             <div className="flex flex-col items-center gap-3">
