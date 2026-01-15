@@ -64,7 +64,6 @@ const createInitialBalls = (): Ball[] => {
     [6, 13, 14, 7, 15],
   ];
 
-  let row = 0;
   rackPattern.forEach((rowBalls, rowIndex) => {
     rowBalls.forEach((ballId, colIndex) => {
       const x = startX + rowIndex * spacing * 0.866;
@@ -87,7 +86,17 @@ const createInitialBalls = (): Ball[] => {
   return balls;
 };
 
-export const useBilliardGame = () => {
+interface GameEvent {
+  type: 'ball_hit' | 'wall_hit' | 'cue_hit' | 'pocket' | 'win' | 'foul';
+  intensity?: number;
+  power?: number;
+}
+
+export const useBilliardGame = (
+  playerCount: number = 2,
+  playerNames: string[] = ['لاعب 1', 'لاعب 2'],
+  teamMode: boolean = false
+) => {
   const [gameState, setGameState] = useState<GameState>({
     balls: createInitialBalls(),
     isAiming: true,
@@ -101,11 +110,18 @@ export const useBilliardGame = () => {
     gameOver: false,
     winner: null,
     foul: false,
-    message: 'اللاعب 1 - وجه الكرة البيضاء!',
+    message: `${playerNames[0]} - وجه الكرة البيضاء!`,
   });
 
+  const [lastEvent, setLastEvent] = useState<GameEvent | null>(null);
   const animationRef = useRef<number>();
   const isSimulating = useRef(false);
+  const eventIdRef = useRef(0);
+
+  const emitEvent = useCallback((event: GameEvent) => {
+    eventIdRef.current++;
+    setLastEvent({ ...event });
+  }, []);
 
   const checkCollision = (ball1: Ball, ball2: Ball): boolean => {
     const dx = ball2.x - ball1.x;
@@ -114,7 +130,7 @@ export const useBilliardGame = () => {
     return distance < ball1.radius + ball2.radius;
   };
 
-  const resolveCollision = (ball1: Ball, ball2: Ball): void => {
+  const resolveCollision = (ball1: Ball, ball2: Ball, emitSound: boolean = true): void => {
     const dx = ball2.x - ball1.x;
     const dy = ball2.y - ball1.y;
     const distance = Math.sqrt(dx * dx + dy * dy);
@@ -144,6 +160,11 @@ export const useBilliardGame = () => {
     ball1.y -= overlap * ny;
     ball2.x += overlap * nx;
     ball2.y += overlap * ny;
+
+    if (emitSound) {
+      const intensity = Math.min(1, Math.abs(dvn) / 10);
+      emitEvent({ type: 'ball_hit', intensity });
+    }
   };
 
   const checkPocket = (ball: Ball): boolean => {
@@ -158,11 +179,22 @@ export const useBilliardGame = () => {
     return false;
   };
 
+  const getNextPlayer = (current: number): number => {
+    const next = current + 1;
+    return next > playerCount ? 1 : next;
+  };
+
+  const getTeam = (player: number): 1 | 2 => {
+    if (!teamMode) return player as 1 | 2;
+    return player <= 2 ? 1 : 2;
+  };
+
   const updatePhysics = useCallback(() => {
     setGameState(prev => {
       const newBalls = prev.balls.map(ball => ({ ...ball }));
       let allStopped = true;
       const pocketedThisTurn: Ball[] = [];
+      let wallHit = false;
 
       for (const ball of newBalls) {
         if (ball.isPocketed) continue;
@@ -189,18 +221,22 @@ export const useBilliardGame = () => {
         if (ball.x - ball.radius < 30) {
           ball.x = 30 + ball.radius;
           ball.vx = -ball.vx * 0.8;
+          wallHit = true;
         }
         if (ball.x + ball.radius > TABLE_WIDTH - 30) {
           ball.x = TABLE_WIDTH - 30 - ball.radius;
           ball.vx = -ball.vx * 0.8;
+          wallHit = true;
         }
         if (ball.y - ball.radius < 30) {
           ball.y = 30 + ball.radius;
           ball.vy = -ball.vy * 0.8;
+          wallHit = true;
         }
         if (ball.y + ball.radius > TABLE_HEIGHT - 30) {
           ball.y = TABLE_HEIGHT - 30 - ball.radius;
           ball.vy = -ball.vy * 0.8;
+          wallHit = true;
         }
 
         // Check pockets
@@ -209,7 +245,12 @@ export const useBilliardGame = () => {
           ball.vx = 0;
           ball.vy = 0;
           pocketedThisTurn.push(ball);
+          emitEvent({ type: 'pocket' });
         }
+      }
+
+      if (wallHit) {
+        emitEvent({ type: 'wall_hit' });
       }
 
       // Ball-to-ball collisions
@@ -237,51 +278,66 @@ export const useBilliardGame = () => {
           cueBall.y = TABLE_HEIGHT / 2;
           newState.foul = true;
           newState.message = 'خطأ! الكرة البيضاء دخلت الجيب';
+          emitEvent({ type: 'foul' });
         }
 
-        // Update scores
-        let player1ScoreAdd = 0;
-        let player2ScoreAdd = 0;
+        // Update scores based on team mode
+        let team1ScoreAdd = 0;
+        let team2ScoreAdd = 0;
         
         pocketedThisTurn.forEach(ball => {
           if (ball.id === 0) return;
           if (ball.id === 8) {
             // 8 ball logic
-            const playerBalls = newBalls.filter(b => 
-              prev.currentPlayer === 1 
-                ? prev.player1Type === 'solid' ? !b.isStriped && b.id !== 0 && b.id !== 8 : b.isStriped
-                : prev.player2Type === 'solid' ? !b.isStriped && b.id !== 0 && b.id !== 8 : b.isStriped
+            const currentTeam = getTeam(prev.currentPlayer);
+            const teamType = currentTeam === 1 ? prev.player1Type : prev.player2Type;
+            const teamBalls = newBalls.filter(b => 
+              teamType === 'solid' ? !b.isStriped && b.id !== 0 && b.id !== 8 : b.isStriped
             );
-            const allPocketed = playerBalls.every(b => b.isPocketed);
+            const allPocketed = teamBalls.every(b => b.isPocketed);
+            
             if (allPocketed) {
               newState.gameOver = true;
-              newState.winner = prev.currentPlayer;
-              newState.message = `🏆 اللاعب ${prev.currentPlayer} فاز!`;
+              newState.winner = currentTeam;
+              const winnerName = teamMode 
+                ? `الفريق ${currentTeam}`
+                : playerNames[prev.currentPlayer - 1];
+              newState.message = `🏆 ${winnerName} فاز!`;
+              emitEvent({ type: 'win' });
             } else {
               newState.gameOver = true;
-              newState.winner = prev.currentPlayer === 1 ? 2 : 1;
-              newState.message = `اللاعب ${prev.currentPlayer === 1 ? 2 : 1} فاز! (الكرة 8 دخلت مبكراً)`;
+              const loserTeam = currentTeam;
+              const winnerTeam = loserTeam === 1 ? 2 : 1;
+              newState.winner = winnerTeam;
+              const winnerName = teamMode 
+                ? `الفريق ${winnerTeam}`
+                : playerNames[winnerTeam - 1];
+              newState.message = `${winnerName} فاز! (الكرة 8 دخلت مبكراً)`;
+              emitEvent({ type: 'win' });
             }
             return;
           }
 
-          if (prev.currentPlayer === 1) {
-            player1ScoreAdd++;
+          const currentTeam = getTeam(prev.currentPlayer);
+          if (currentTeam === 1) {
+            team1ScoreAdd++;
           } else {
-            player2ScoreAdd++;
+            team2ScoreAdd++;
           }
         });
 
-        newState.player1Score += player1ScoreAdd;
-        newState.player2Score += player2ScoreAdd;
+        newState.player1Score += team1ScoreAdd;
+        newState.player2Score += team2ScoreAdd;
 
         // Switch player if no ball pocketed or foul
         if (pocketedThisTurn.length === 0 || newState.foul) {
-          newState.currentPlayer = prev.currentPlayer === 1 ? 2 : 1;
+          const nextPlayer = getNextPlayer(prev.currentPlayer);
+          newState.currentPlayer = nextPlayer as 1 | 2;
         }
 
         if (!newState.gameOver) {
-          newState.message = `اللاعب ${newState.currentPlayer} - دورك!`;
+          const currentName = playerNames[newState.currentPlayer - 1] || `لاعب ${newState.currentPlayer}`;
+          newState.message = `${currentName} - دورك!`;
         }
 
         newState.isAiming = true;
@@ -291,7 +347,7 @@ export const useBilliardGame = () => {
 
       return newState;
     });
-  }, []);
+  }, [playerNames, playerCount, teamMode, emitEvent]);
 
   useEffect(() => {
     const animate = () => {
@@ -309,6 +365,8 @@ export const useBilliardGame = () => {
   }, [updatePhysics]);
 
   const shoot = useCallback((angle: number, power: number) => {
+    emitEvent({ type: 'cue_hit', power: power / 100 });
+    
     setGameState(prev => {
       const newBalls = prev.balls.map(ball => {
         if (ball.id === 0 && !ball.isPocketed) {
@@ -329,7 +387,7 @@ export const useBilliardGame = () => {
         message: 'الكرات تتحرك...',
       };
     });
-  }, []);
+  }, [emitEvent]);
 
   const resetGame = useCallback(() => {
     isSimulating.current = false;
@@ -346,9 +404,9 @@ export const useBilliardGame = () => {
       gameOver: false,
       winner: null,
       foul: false,
-      message: 'اللاعب 1 - وجه الكرة البيضاء!',
+      message: `${playerNames[0]} - وجه الكرة البيضاء!`,
     });
-  }, []);
+  }, [playerNames]);
 
   return {
     gameState,
@@ -358,5 +416,6 @@ export const useBilliardGame = () => {
     POCKETS,
     TABLE_WIDTH,
     TABLE_HEIGHT,
+    lastEvent,
   };
 };
