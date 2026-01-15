@@ -57,6 +57,33 @@ export default {
           border: "hsl(var(--sidebar-border))",
           ring: "hsl(var(--sidebar-ring))",
         },
+        // Billiard Custom Colors
+        felt: {
+          DEFAULT: "hsl(var(--table-felt))",
+          light: "hsl(var(--table-felt-light))",
+        },
+        wood: {
+          DEFAULT: "hsl(var(--wood))",
+          light: "hsl(var(--wood-light))",
+        },
+        gold: {
+          DEFAULT: "hsl(var(--gold))",
+          glow: "hsl(var(--gold-glow))",
+        },
+        neon: {
+          green: "hsl(var(--neon-green))",
+        },
+        ball: {
+          white: "hsl(var(--ball-white))",
+          black: "hsl(var(--ball-black))",
+          yellow: "hsl(var(--ball-yellow))",
+          blue: "hsl(var(--ball-blue))",
+          red: "hsl(var(--ball-red))",
+          purple: "hsl(var(--ball-purple))",
+          orange: "hsl(var(--ball-orange))",
+          green: "hsl(var(--ball-green))",
+          maroon: "hsl(var(--ball-maroon))",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

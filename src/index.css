@@ -8,90 +8,119 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Billiard 2026 - Dark Luxury Theme */
+    --background: 180 15% 8%;
+    --foreground: 45 30% 90%;
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 180 12% 12%;
+    --card-foreground: 45 30% 90%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 180 12% 10%;
+    --popover-foreground: 45 30% 90%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 45 80% 55%;
+    --primary-foreground: 180 15% 8%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 145 60% 28%;
+    --secondary-foreground: 45 30% 95%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 180 10% 18%;
+    --muted-foreground: 45 15% 60%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent: 145 50% 35%;
+    --accent-foreground: 45 30% 95%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 70% 50%;
+    --destructive-foreground: 45 30% 95%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 180 10% 20%;
+    --input: 180 10% 15%;
+    --ring: 45 80% 55%;
 
-    --radius: 0.5rem;
+    --radius: 0.75rem;
 
-    --sidebar-background: 0 0% 98%;
+    /* Custom Billiard Colors */
+    --table-felt: 145 55% 25%;
+    --table-felt-light: 145 50% 32%;
+    --wood: 30 50% 25%;
+    --wood-light: 30 45% 35%;
+    --gold: 45 80% 55%;
+    --gold-glow: 45 90% 65%;
+    --neon-green: 145 100% 50%;
+    --ball-white: 0 0% 95%;
+    --ball-black: 0 0% 10%;
+    --ball-yellow: 48 95% 55%;
+    --ball-blue: 210 85% 45%;
+    --ball-red: 0 75% 50%;
+    --ball-purple: 280 60% 45%;
+    --ball-orange: 25 90% 55%;
+    --ball-green: 145 70% 40%;
+    --ball-maroon: 0 60% 35%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-background: 180 12% 10%;
+    --sidebar-foreground: 45 30% 90%;
+    --sidebar-primary: 45 80% 55%;
+    --sidebar-primary-foreground: 180 15% 8%;
+    --sidebar-accent: 145 50% 30%;
+    --sidebar-accent-foreground: 45 30% 95%;
+    --sidebar-border: 180 10% 20%;
+    --sidebar-ring: 45 80% 55%;
   }
+}
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+/* Custom Animations */
+@keyframes glow {
+  0%, 100% { filter: drop-shadow(0 0 8px hsl(var(--gold-glow))); }
+  50% { filter: drop-shadow(0 0 20px hsl(var(--gold-glow))); }
+}
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+@keyframes pulse-neon {
+  0%, 100% { box-shadow: 0 0 10px hsl(var(--neon-green)), 0 0 20px hsl(var(--neon-green) / 0.5); }
+  50% { box-shadow: 0 0 20px hsl(var(--neon-green)), 0 0 40px hsl(var(--neon-green) / 0.7); }
+}
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+.animate-glow {
+  animation: glow 2s ease-in-out infinite;
+}
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+.animate-pulse-neon {
+  animation: pulse-neon 2s ease-in-out infinite;
+}
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+.animate-spin-slow {
+  animation: spin-slow 20s linear infinite;
+}
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
-  }
+/* Table Felt Texture */
+.felt-texture {
+  background: 
+    radial-gradient(circle at 50% 50%, hsl(var(--table-felt-light)) 0%, hsl(var(--table-felt)) 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.1'/%3E%3C/svg%3E");
+}
+
+/* Wood Texture */
+.wood-texture {
+  background: linear-gradient(90deg, 
+    hsl(var(--wood)) 0%, 
+    hsl(var(--wood-light)) 25%, 
+    hsl(var(--wood)) 50%, 
+    hsl(var(--wood-light)) 75%, 
+    hsl(var(--wood)) 100%
+  );
 }
 
 @layer base {
