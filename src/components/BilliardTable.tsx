@@ -9,6 +9,7 @@ interface BilliardTableProps {
   onShoot: (angle: number, power: number) => void;
   tableWidth: number;
   tableHeight: number;
+  currentPlayer?: number;
 }
 
 const BilliardTable: React.FC<BilliardTableProps> = ({
@@ -18,59 +19,87 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
   onShoot,
   tableWidth,
   tableHeight,
+  currentPlayer = 1,
 }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isPowerCharging, setIsPowerCharging] = useState(false);
-  const [power, setPower] = useState(0);
-  const powerIntervalRef = useRef<NodeJS.Timeout>();
+  const [aimAngle, setAimAngle] = useState(0);
+  const [isAimLocked, setIsAimLocked] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [startPullY, setStartPullY] = useState(0);
 
   const cueBall = balls.find(b => b.id === 0 && !b.isPocketed);
 
   const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (!svgRef.current || !isAiming) return;
+    if (!svgRef.current || !isAiming || !cueBall) return;
+    
     const rect = svgRef.current.getBoundingClientRect();
     const scaleX = tableWidth / rect.width;
     const scaleY = tableHeight / rect.height;
-    setMousePos({
-      x: (e.clientX - rect.left) * scaleX,
-      y: (e.clientY - rect.top) * scaleY,
-    });
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    setMousePos({ x, y });
+
+    if (!isAimLocked) {
+      // Calculate angle from cue ball to mouse
+      const angle = Math.atan2(y - cueBall.y, x - cueBall.x);
+      setAimAngle(angle);
+    } else if (isPulling) {
+      // Calculate pull distance based on mouse Y movement
+      const currentY = e.clientY;
+      const distance = Math.max(0, Math.min(100, (currentY - startPullY) * 0.5));
+      setPullDistance(distance);
+    }
   };
 
-  const handleMouseDown = () => {
+  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
     if (!isAiming || !cueBall) return;
-    setIsPowerCharging(true);
-    setPower(0);
-    powerIntervalRef.current = setInterval(() => {
-      setPower(prev => Math.min(prev + 2, 100));
-    }, 20);
+
+    if (!isAimLocked) {
+      // First click - lock the aim direction
+      setIsAimLocked(true);
+      setStartPullY(e.clientY);
+      setIsPulling(true);
+    }
   };
 
   const handleMouseUp = () => {
-    if (!isPowerCharging || !cueBall) return;
-    if (powerIntervalRef.current) {
-      clearInterval(powerIntervalRef.current);
-    }
-    setIsPowerCharging(false);
+    if (!isAimLocked || !cueBall) return;
     
-    if (power > 5) {
-      const angle = Math.atan2(
-        cueBall.y - mousePos.y,
-        cueBall.x - mousePos.x
-      );
-      onShoot(angle, power);
+    if (isPulling && pullDistance > 5) {
+      // Shoot in the direction the cue is pointing (opposite to aim)
+      const shootAngle = aimAngle + Math.PI;
+      onShoot(shootAngle, pullDistance);
+      setIsAimLocked(false);
+      setIsPulling(false);
+      setPullDistance(0);
+    } else if (pullDistance <= 5) {
+      // Reset if pull was too short
+      setIsAimLocked(false);
+      setIsPulling(false);
+      setPullDistance(0);
     }
-    setPower(0);
+  };
+
+  const handleRightClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Cancel aiming
+    setIsAimLocked(false);
+    setIsPulling(false);
+    setPullDistance(0);
   };
 
   useEffect(() => {
-    return () => {
-      if (powerIntervalRef.current) {
-        clearInterval(powerIntervalRef.current);
+    const handleGlobalMouseUp = () => {
+      if (isPulling) {
+        handleMouseUp();
       }
     };
-  }, []);
+    window.addEventListener('mouseup', handleGlobalMouseUp);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isPulling, pullDistance, aimAngle, cueBall]);
 
   const renderBall = (ball: Ball) => {
     if (ball.isPocketed) return null;
@@ -145,9 +174,8 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
     );
   };
 
-  const cueAngle = cueBall
-    ? Math.atan2(cueBall.y - mousePos.y, cueBall.x - mousePos.x)
-    : 0;
+  // Calculate cue stick position based on pull distance
+  const cueOffset = cueBall ? 20 + pullDistance * 1.5 : 0;
 
   return (
     <div className="relative w-full max-w-4xl mx-auto">
@@ -163,7 +191,7 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
             onMouseMove={handleMouseMove}
             onMouseDown={handleMouseDown}
             onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
+            onContextMenu={handleRightClick}
           >
             <defs>
               {/* Ball gradient */}
@@ -181,6 +209,13 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
                 <stop offset="0%" stopColor="#000" />
                 <stop offset="100%" stopColor="#1a1a1a" />
               </radialGradient>
+              {/* Cue gradient */}
+              <linearGradient id="cueGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#f5e6d3" />
+                <stop offset="10%" stopColor="#2a1810" />
+                <stop offset="50%" stopColor="#c4a574" />
+                <stop offset="100%" stopColor="#8b7355" />
+              </linearGradient>
             </defs>
 
             {/* Table felt */}
@@ -229,62 +264,92 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
             {/* Balls */}
             {balls.map(renderBall)}
 
-            {/* Cue stick aiming line */}
+            {/* Cue stick and aiming line */}
             {isAiming && cueBall && (
               <g>
-                {/* Aim line */}
+                {/* Aim line - shows where ball will go */}
                 <line
                   x1={cueBall.x}
                   y1={cueBall.y}
-                  x2={cueBall.x + Math.cos(cueAngle) * 300}
-                  y2={cueBall.y + Math.sin(cueAngle) * 300}
+                  x2={cueBall.x + Math.cos(aimAngle + Math.PI) * 300}
+                  y2={cueBall.y + Math.sin(aimAngle + Math.PI) * 300}
                   stroke="rgba(255,255,255,0.3)"
                   strokeWidth="2"
                   strokeDasharray="5,5"
                 />
-                {/* Cue stick */}
+                
+                {/* Target indicator at aim point */}
+                {!isAimLocked && (
+                  <circle
+                    cx={mousePos.x}
+                    cy={mousePos.y}
+                    r="8"
+                    fill="none"
+                    stroke="rgba(255,215,0,0.5)"
+                    strokeWidth="2"
+                  />
+                )}
+
+                {/* Cue stick - positioned on the opposite side of aim */}
                 <line
-                  x1={cueBall.x + Math.cos(cueAngle) * (cueBall.radius + 5 + power * 0.5)}
-                  y1={cueBall.y + Math.sin(cueAngle) * (cueBall.radius + 5 + power * 0.5)}
-                  x2={cueBall.x + Math.cos(cueAngle) * (cueBall.radius + 200 + power * 0.5)}
-                  y2={cueBall.y + Math.sin(cueAngle) * (cueBall.radius + 200 + power * 0.5)}
+                  x1={cueBall.x + Math.cos(aimAngle) * (cueBall.radius + cueOffset)}
+                  y1={cueBall.y + Math.sin(aimAngle) * (cueBall.radius + cueOffset)}
+                  x2={cueBall.x + Math.cos(aimAngle) * (cueBall.radius + cueOffset + 200)}
+                  y2={cueBall.y + Math.sin(aimAngle) * (cueBall.radius + cueOffset + 200)}
                   stroke="url(#cueGradient)"
                   strokeWidth="8"
                   strokeLinecap="round"
                 />
-                <defs>
-                  <linearGradient id="cueGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                    <stop offset="0%" stopColor="#2a1810" />
-                    <stop offset="50%" stopColor="#c4a574" />
-                    <stop offset="100%" stopColor="#8b7355" />
-                  </linearGradient>
-                </defs>
+                
+                {/* Cue tip */}
+                <circle
+                  cx={cueBall.x + Math.cos(aimAngle) * (cueBall.radius + cueOffset)}
+                  cy={cueBall.y + Math.sin(aimAngle) * (cueBall.radius + cueOffset)}
+                  r="4"
+                  fill="#87CEEB"
+                />
               </g>
             )}
           </svg>
         </div>
       </div>
 
-      {/* Power meter */}
-      {isPowerCharging && (
+      {/* Aiming instructions */}
+      {isAiming && cueBall && (
         <motion.div
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="absolute top-4 left-1/2 -translate-x-1/2 bg-card/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gold/30"
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="absolute top-4 left-1/2 -translate-x-1/2 bg-card/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gold/30 text-center"
         >
-          <div className="text-center text-sm text-foreground mb-2">القوة</div>
-          <div className="w-40 h-4 bg-muted rounded-full overflow-hidden">
-            <motion.div
-              className="h-full rounded-full"
-              style={{
-                width: `${power}%`,
-                background: `linear-gradient(90deg, hsl(145, 70%, 40%) 0%, hsl(45, 80%, 55%) 50%, hsl(0, 75%, 50%) 100%)`,
-              }}
-            />
-          </div>
-          <div className="text-center text-xs text-gold mt-1">{power}%</div>
+          {!isAimLocked ? (
+            <p className="text-sm text-foreground">
+              🎯 حرك الماوس لتحديد الاتجاه ثم <span className="text-gold font-bold">اضغط</span> للقفل
+            </p>
+          ) : (
+            <div>
+              <p className="text-sm text-foreground mb-2">
+                ⬇️ اسحب للأسفل لشحن القوة ثم <span className="text-gold font-bold">أفلت</span> للضرب
+              </p>
+              <div className="w-40 h-4 bg-muted rounded-full overflow-hidden mx-auto">
+                <motion.div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${pullDistance}%`,
+                    background: `linear-gradient(90deg, hsl(145, 70%, 40%) 0%, hsl(45, 80%, 55%) 50%, hsl(0, 75%, 50%) 100%)`,
+                  }}
+                />
+              </div>
+              <p className="text-xs text-gold mt-1">{Math.round(pullDistance)}%</p>
+              <p className="text-xs text-muted-foreground mt-1">كليك يمين للإلغاء</p>
+            </div>
+          )}
         </motion.div>
       )}
+
+      {/* Current player indicator */}
+      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-card/80 backdrop-blur-sm rounded-full px-4 py-2 border border-gold/30">
+        <span className="text-gold font-bold">لاعب {currentPlayer}</span>
+      </div>
     </div>
   );
 };
