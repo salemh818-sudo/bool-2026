@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, Users, LogOut, Copy, Check, ArrowRight, Loader2, UserPlus } from 'lucide-react';
+import { Plus, Search, Users, LogOut, Copy, Check, ArrowRight, Loader2, UserPlus, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
@@ -239,7 +239,7 @@ const OnlineLobby = () => {
           اللعب أونلاين
         </motion.h1>
 
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Create/Join Room */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -305,6 +305,38 @@ const OnlineLobby = () => {
                 </Button>
               </div>
             </div>
+          </motion.div>
+
+          {/* Play vs Computer */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-card/50 backdrop-blur-sm border border-border rounded-2xl p-6 md:col-span-2 lg:col-span-1"
+          >
+            <h2 className="text-xl font-bold text-foreground mb-4 flex items-center gap-2">
+              <Bot className="w-5 h-5 text-purple-400" />
+              ضد الكمبيوتر
+            </h2>
+
+            <p className="text-muted-foreground text-sm mb-6">
+              تدرب على مهاراتك في مباراة ضد الذكاء الاصطناعي
+            </p>
+
+            <Button
+              onClick={() => navigate('/game', { 
+                state: { 
+                  mode: 'vs-computer',
+                  playerCount: 2,
+                  playerNames: [profile?.username || 'أنت', 'الكمبيوتر'],
+                  teamMode: false
+                } 
+              })}
+              className="w-full h-12 text-lg bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white gap-2"
+            >
+              <Bot className="w-5 h-5" />
+              العب ضد الكمبيوتر
+            </Button>
           </motion.div>
 
           {/* Friends */}
