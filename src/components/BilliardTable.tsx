@@ -24,9 +24,10 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
   const svgRef = useRef<SVGSVGElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [aimAngle, setAimAngle] = useState(0);
-  const [isCharging, setIsCharging] = useState(false);
-  const [chargeAmount, setChargeAmount] = useState(0);
-  const chargeIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const [isAimLocked, setIsAimLocked] = useState(false);
+  const [isPulling, setIsPulling] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [startPullY, setStartPullY] = useState(0);
 
   const cueBall = balls.find(b => b.id === 0 && !b.isPocketed);
 
@@ -41,82 +42,64 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
     
     setMousePos({ x, y });
 
-    if (!isCharging) {
+    if (!isAimLocked) {
       // Calculate angle from cue ball to mouse
       const angle = Math.atan2(y - cueBall.y, x - cueBall.x);
       setAimAngle(angle);
+    } else if (isPulling) {
+      // Calculate pull distance based on mouse Y movement
+      const currentY = e.clientY;
+      const distance = Math.max(0, Math.min(100, (currentY - startPullY) * 0.5));
+      setPullDistance(distance);
     }
-  };
-
-  const startCharging = () => {
-    if (!isAiming || !cueBall || isCharging) return;
-    
-    setIsCharging(true);
-    setChargeAmount(0);
-    
-    // Start charging power while holding
-    chargeIntervalRef.current = setInterval(() => {
-      setChargeAmount(prev => {
-        const newCharge = prev + 2;
-        return newCharge >= 100 ? 100 : newCharge;
-      });
-    }, 30);
-  };
-
-  const stopCharging = () => {
-    if (!isCharging || !cueBall) return;
-    
-    // Clear the interval
-    if (chargeIntervalRef.current) {
-      clearInterval(chargeIntervalRef.current);
-      chargeIntervalRef.current = null;
-    }
-    
-    if (chargeAmount > 5) {
-      // Shoot in the direction the cue is pointing (opposite to aim)
-      const shootAngle = aimAngle + Math.PI;
-      onShoot(shootAngle, chargeAmount);
-    }
-    
-    setIsCharging(false);
-    setChargeAmount(0);
   };
 
   const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
-    if (e.button === 0) { // Left click only
-      startCharging();
+    if (!isAiming || !cueBall) return;
+
+    if (!isAimLocked) {
+      // First click - lock the aim direction
+      setIsAimLocked(true);
+      setStartPullY(e.clientY);
+      setIsPulling(true);
     }
   };
 
   const handleMouseUp = () => {
-    stopCharging();
+    if (!isAimLocked || !cueBall) return;
+    
+    if (isPulling && pullDistance > 5) {
+      // Shoot in the direction the cue is pointing (opposite to aim)
+      const shootAngle = aimAngle + Math.PI;
+      onShoot(shootAngle, pullDistance);
+      setIsAimLocked(false);
+      setIsPulling(false);
+      setPullDistance(0);
+    } else if (pullDistance <= 5) {
+      // Reset if pull was too short
+      setIsAimLocked(false);
+      setIsPulling(false);
+      setPullDistance(0);
+    }
   };
 
   const handleRightClick = (e: React.MouseEvent) => {
     e.preventDefault();
-    // Cancel charging
-    if (chargeIntervalRef.current) {
-      clearInterval(chargeIntervalRef.current);
-      chargeIntervalRef.current = null;
-    }
-    setIsCharging(false);
-    setChargeAmount(0);
+    // Cancel aiming
+    setIsAimLocked(false);
+    setIsPulling(false);
+    setPullDistance(0);
   };
 
   useEffect(() => {
     const handleGlobalMouseUp = () => {
-      if (isCharging) {
-        stopCharging();
+      if (isPulling) {
+        handleMouseUp();
       }
     };
     window.addEventListener('mouseup', handleGlobalMouseUp);
-    return () => {
-      window.removeEventListener('mouseup', handleGlobalMouseUp);
-      if (chargeIntervalRef.current) {
-        clearInterval(chargeIntervalRef.current);
-      }
-    };
-  }, [isCharging, chargeAmount, aimAngle, cueBall]);
+    return () => window.removeEventListener('mouseup', handleGlobalMouseUp);
+  }, [isPulling, pullDistance, aimAngle, cueBall]);
 
   const renderBall = (ball: Ball) => {
     if (ball.isPocketed) return null;
@@ -191,8 +174,8 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
     );
   };
 
-  // Calculate cue stick position based on charge amount (pulls back while charging)
-  const cueOffset = cueBall ? 20 + chargeAmount * 1.5 : 0;
+  // Calculate cue stick position based on pull distance
+  const cueOffset = cueBall ? 20 + pullDistance * 1.5 : 0;
 
   return (
     <div className="relative w-full max-w-4xl mx-auto">
@@ -296,7 +279,7 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
                 />
                 
                 {/* Target indicator at aim point */}
-                {!isCharging && (
+                {!isAimLocked && (
                   <circle
                     cx={mousePos.x}
                     cy={mousePos.y}
@@ -338,25 +321,25 @@ const BilliardTable: React.FC<BilliardTableProps> = ({
           animate={{ opacity: 1, y: 0 }}
           className="absolute top-4 left-1/2 -translate-x-1/2 bg-card/90 backdrop-blur-sm rounded-lg p-3 shadow-lg border border-gold/30 text-center"
         >
-          {!isCharging ? (
+          {!isAimLocked ? (
             <p className="text-sm text-foreground">
-              🎯 حرك الماوس لتحديد الاتجاه ثم <span className="text-gold font-bold">اضغط مطولاً</span> لشحن القوة
+              🎯 حرك الماوس لتحديد الاتجاه ثم <span className="text-gold font-bold">اضغط</span> للقفل
             </p>
           ) : (
             <div>
               <p className="text-sm text-foreground mb-2">
-                ⚡ استمر بالضغط لشحن القوة ثم <span className="text-gold font-bold">أفلت</span> للضرب
+                ⬇️ اسحب للأسفل لشحن القوة ثم <span className="text-gold font-bold">أفلت</span> للضرب
               </p>
               <div className="w-40 h-4 bg-muted rounded-full overflow-hidden mx-auto">
                 <motion.div
                   className="h-full rounded-full"
                   style={{
-                    width: `${chargeAmount}%`,
+                    width: `${pullDistance}%`,
                     background: `linear-gradient(90deg, hsl(145, 70%, 40%) 0%, hsl(45, 80%, 55%) 50%, hsl(0, 75%, 50%) 100%)`,
                   }}
                 />
               </div>
-              <p className="text-xs text-gold mt-1">{Math.round(chargeAmount)}%</p>
+              <p className="text-xs text-gold mt-1">{Math.round(pullDistance)}%</p>
               <p className="text-xs text-muted-foreground mt-1">كليك يمين للإلغاء</p>
             </div>
           )}
