@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import BilliardTable from '@/components/BilliardTable';
 import GameHUD from '@/components/GameHUD';
+import AIChatBot from '@/components/AIChatBot';
 import { useBilliardGame } from '@/hooks/useBilliardGame';
 import { useGameSounds } from '@/hooks/useGameSounds';
 import { Button } from '@/components/ui/button';
@@ -162,6 +163,9 @@ const Game = () => {
       <footer className="relative z-10 text-center py-4 text-muted-foreground text-sm">
         <p>بلياردو 2026 🎱</p>
       </footer>
+
+      {/* AI Chatbot */}
+      <AIChatBot />
     </div>
   );
 };
